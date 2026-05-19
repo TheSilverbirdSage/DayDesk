@@ -1,6 +1,6 @@
-# test_app
+# DayDesk
 
-A new Flutter project.
+A Flutter project. A mobile app that helps users track their finances and manage tasks.
 
 ## Getting Started
 
