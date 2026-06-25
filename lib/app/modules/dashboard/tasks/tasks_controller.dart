@@ -13,8 +13,12 @@ class TaskListItem {
     required this.icon,
     this.priority,
     this.completedText,
+    this.notes,
+    this.createdAt,
+    this.scheduledAt,
     this.isDone = false,
     this.isUrgent = false,
+    this.isConsistent = false,
   });
 
   final String id;
@@ -23,9 +27,13 @@ class TaskListItem {
   final String time;
   final IconData icon;
   final String? priority;
-  final String? completedText;
+  String? completedText;
+  final String? notes;
+  final DateTime? createdAt;
+  final DateTime? scheduledAt;
   bool isDone;
   final bool isUrgent;
+  final bool isConsistent;
 
   Map<String, dynamic> toStorageMap() {
     return {
@@ -36,8 +44,12 @@ class TaskListItem {
       'iconCodePoint': icon.codePoint,
       'priority': priority,
       'completedText': completedText,
+      'notes': notes,
       'isDone': isDone,
       'isUrgent': isUrgent,
+      'isConsistent': isConsistent,
+      if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+      if (scheduledAt != null) 'scheduledAt': scheduledAt!.toIso8601String(),
     };
   }
 
@@ -53,8 +65,17 @@ class TaskListItem {
       ),
       priority: map['priority'] as String?,
       completedText: map['completedText'] as String?,
+      notes: map['notes'] as String?,
+      createdAt: map['createdAt'] != null
+          ? DateTime.tryParse(map['createdAt'] as String)
+          : null,
+      scheduledAt: map['scheduledAt'] != null
+          ? DateTime.tryParse(map['scheduledAt'] as String)
+          : null,
       isDone: map['isDone'] as bool? ?? false,
       isUrgent: map['isUrgent'] as bool? ?? false,
+      isConsistent:
+          map['isConsistent'] == true || map['section'] == 'Consistent',
     );
   }
 }
@@ -90,8 +111,10 @@ class TasksController extends GetxController {
     final taskSections = tasks.map((task) => task.section);
     final values = <String>{
       'All',
+      'Consistent',
       ...onboardingCategories.where((category) => category.trim().isNotEmpty),
-      ...taskSections.where((section) => section != 'Urgent'),
+      ...taskSections
+          .where((section) => section != 'Urgent' && section != 'Consistent'),
       'Urgent',
     };
     return values.toList();
@@ -107,10 +130,11 @@ class TasksController extends GetxController {
   List<TaskSection> get sections {
     final filtered = tasks.where(_matchesFilters).toList();
     final sectionNames = <String>[
+      if (filtered.any((task) => task.isConsistent)) 'Consistent',
       if (filtered.any((task) => task.section == 'Urgent')) 'Urgent',
       ...filtered
           .map((task) => task.section)
-          .where((section) => section != 'Urgent')
+          .where((section) => section != 'Urgent' && section != 'Consistent')
           .toSet(),
     ];
 
@@ -119,7 +143,11 @@ class TasksController extends GetxController {
           (section) => TaskSection(
             title: section,
             countColor: _sectionColor(section),
-            tasks: filtered.where((task) => task.section == section).toList(),
+            tasks: filtered
+                .where((task) => section == 'Consistent'
+                    ? task.isConsistent
+                    : task.section == section)
+                .toList(),
           ),
         )
         .where((section) => section.tasks.isNotEmpty)
@@ -138,8 +166,15 @@ class TasksController extends GetxController {
     final index = tasks.indexOf(task);
     if (index == -1) return;
     tasks[index].isDone = !tasks[index].isDone;
+    tasks[index].completedText = tasks[index].isDone
+        ? 'Done at ${_formatCompletionTime(DateTime.now())}'
+        : null;
     tasks.refresh();
     await _storage.updateTask(tasks[index].toStorageMap());
+  }
+
+  Future<void> deleteTask(TaskListItem task) {
+    return _storage.deleteTask(task.id);
   }
 
   Future<void> addTask({
@@ -156,6 +191,8 @@ class TasksController extends GetxController {
       iconCodePoint: Icons.event_rounded.codePoint,
       priority: isUrgent ? 'High Priority' : null,
       isUrgent: isUrgent,
+      isConsistent: category == 'Consistent',
+      dueDate: _dateFromDueLabel(dueDate),
     );
   }
 
@@ -167,6 +204,7 @@ class TasksController extends GetxController {
     final category = selectedCategory.value;
     final matchesCategory = category == 'All' ||
         task.section == category ||
+        (category == 'Consistent' && task.isConsistent) ||
         (category == 'Urgent' && task.isUrgent);
     final query = searchQuery.value;
     final matchesSearch = query.isEmpty ||
@@ -189,8 +227,39 @@ class TasksController extends GetxController {
 
   Color _sectionColor(String section) {
     if (section == 'Urgent') return const Color(0xFFC00000);
+    if (section == 'Consistent') return AppTaskColors.primary;
     if (section == 'Personal') return AppTaskColors.green;
     return AppTaskColors.primary;
+  }
+
+  String _formatCompletionTime(DateTime completedAt) {
+    final hour = completedAt.hour;
+    final minute = completedAt.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+    return '$displayHour:$minute $period';
+  }
+
+  DateTime _dateFromDueLabel(String dueDate) {
+    if (dueDate == 'Today') {
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day);
+    }
+
+    final match = RegExp(r'^(\d{2})/(\d{2})/(\d{4})$').firstMatch(dueDate);
+    if (match == null) {
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day);
+    }
+
+    final month = int.tryParse(match.group(1)!);
+    final day = int.tryParse(match.group(2)!);
+    final year = int.tryParse(match.group(3)!);
+    if (month == null || day == null || year == null) {
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day);
+    }
+    return DateTime(year, month, day);
   }
 
   @override

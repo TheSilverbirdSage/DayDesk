@@ -17,11 +17,12 @@ class DashboardScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     return Scaffold(
       extendBody: true,
       body: child,
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppTheme.primary,
+        backgroundColor: isDark ? const Color(0xFF8B8CF6) : AppTheme.primary,
         foregroundColor: Colors.white,
         shape: const CircleBorder(),
         onPressed: () => QuickEntrySheet.show(),
@@ -30,9 +31,11 @@ class DashboardScaffold extends StatelessWidget {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
         height: 74,
-        color: Colors.white,
+        color: AppTheme.navSurface(context),
         elevation: 12,
-        shadowColor: Colors.black.withValues(alpha: 0.10),
+        shadowColor: isDark
+            ? Colors.black.withValues(alpha: 0.35)
+            : Colors.black.withValues(alpha: 0.10),
         notchMargin: 8,
         shape: const CircularNotchedRectangle(),
         child: Row(
@@ -98,8 +101,12 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     final isActive = route == activeRoute;
-    final color = isActive ? AppTheme.primary : Colors.blueGrey.shade300;
+    final activeColor = isDark ? const Color(0xFFB4B5FF) : AppTheme.primary;
+    final color = isActive
+        ? activeColor
+        : AppTheme.secondaryText(context).withValues(alpha: 0.72);
 
     return InkWell(
       borderRadius: BorderRadius.circular(18),
@@ -116,7 +123,7 @@ class _NavItem extends StatelessWidget {
               height: 30,
               decoration: BoxDecoration(
                 color: isActive
-                    ? AppTheme.primary.withValues(alpha: 0.10)
+                    ? activeColor.withValues(alpha: isDark ? 0.16 : 0.10)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(18),
               ),

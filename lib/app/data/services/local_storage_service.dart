@@ -14,6 +14,7 @@ class LocalStorageService extends GetxService {
   static const _onboardingCompletedKey = 'onboarding_completed';
   static const _onboardingProfileKey = 'onboarding_profile';
   static const _currentUserKey = 'current_user';
+  static const _darkModeKey = 'dark_mode';
   static const _tasksKey = 'tasks';
   static const _financeActivitiesKey = 'finance_activities';
   static const _notificationsKey = 'notifications';
@@ -97,6 +98,13 @@ class LocalStorageService extends GetxService {
     });
   }
 
+  bool get isDarkMode =>
+      _secureBox.get(_darkModeKey, defaultValue: false) as bool;
+
+  Future<void> setDarkMode(bool value) {
+    return _secureBox.put(_darkModeKey, value);
+  }
+
   Future<void> addTask({
     required String title,
     required String section,
@@ -104,9 +112,14 @@ class LocalStorageService extends GetxService {
     required int iconCodePoint,
     String? priority,
     String? completedText,
+    String? notes,
     bool isDone = false,
     bool isUrgent = false,
+    bool isConsistent = false,
+    DateTime? dueDate,
+    DateTime? scheduledAt,
   }) {
+    final taskDueDate = dueDate ?? DateTime.now();
     final task = {
       'id': _newId('task'),
       'title': title,
@@ -115,10 +128,18 @@ class LocalStorageService extends GetxService {
       'iconCodePoint': iconCodePoint,
       'priority': priority,
       'completedText': completedText,
+      'notes': notes,
       'isDone': isDone,
       'isUrgent': isUrgent,
+      'isConsistent': isConsistent,
       'createdAt': DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
+      'dueDate': DateTime(
+        taskDueDate.year,
+        taskDueDate.month,
+        taskDueDate.day,
+      ).toIso8601String(),
+      if (scheduledAt != null) 'scheduledAt': scheduledAt.toIso8601String(),
     };
     tasks.insert(0, task);
     return _persistTasks();
@@ -137,6 +158,11 @@ class LocalStorageService extends GetxService {
     await _persistTasks();
   }
 
+  Future<void> deleteTask(String id) async {
+    tasks.removeWhere((item) => item['id'] == id);
+    await _persistTasks();
+  }
+
   Future<void> addFinanceActivity({
     required String title,
     required String category,
@@ -144,6 +170,7 @@ class LocalStorageService extends GetxService {
     required int iconCodePoint,
     required int iconColorValue,
     required int backgroundColorValue,
+    String? notes,
     DateTime? occurredAt,
   }) {
     final date = occurredAt ?? DateTime.now();
@@ -155,6 +182,7 @@ class LocalStorageService extends GetxService {
       'time': _formatTime(date),
       'dayLabel': _formatDayLabel(date),
       'occurredAt': date.toIso8601String(),
+      'notes': notes,
       'iconCodePoint': iconCodePoint,
       'iconColorValue': iconColorValue,
       'backgroundColorValue': backgroundColorValue,

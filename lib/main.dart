@@ -23,10 +23,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Get.isRegistered<LocalStorageService>()
+        ? Get.find<LocalStorageService>().isDarkMode
+        : false;
     return GetMaterialApp(
       title: 'DayDesk',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
       initialRoute: AppRoutes.splash,
       getPages: AppPages.routes,
     );

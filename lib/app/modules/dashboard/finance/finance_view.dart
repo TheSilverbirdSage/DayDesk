@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../routes/app_routes.dart';
 import '../widgets/dashboard_scaffold.dart';
+import '../widgets/finance_details_dialog.dart';
 import '../widgets/notification_bell.dart';
 import 'finance_controller.dart';
 
@@ -69,8 +70,8 @@ class FinanceView extends GetView<FinanceController> {
                           controller.showAllActivities.value
                               ? 'Show Less'
                               : 'View All',
-                          style: const TextStyle(
-                            color: AppTheme.primary,
+                          style: TextStyle(
+                            color: AppTheme.primaryAccent(context),
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
                           ),
@@ -111,7 +112,9 @@ class FinanceView extends GetView<FinanceController> {
             child: Text(
               currentDay,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary.withValues(alpha: 0.84),
+                    color: AppTheme.primaryText(context).withValues(
+                      alpha: 0.84,
+                    ),
                     fontWeight: FontWeight.w600,
                   ),
             ),
@@ -119,7 +122,22 @@ class FinanceView extends GetView<FinanceController> {
         );
       }
 
-      sections.add(_ActivityTile(activity: activity));
+      sections.add(
+        _ActivityTile(
+          activity: activity,
+          onLongPress: () => showFinanceDetailsDialog(
+            context,
+            FinanceDetailsData(
+              title: activity.title,
+              category: activity.category,
+              amount: activity.amount,
+              createdAt: activity.createdAt,
+              occurredAt: activity.occurredAt,
+              notes: activity.notes,
+            ),
+          ),
+        ),
+      );
     }
 
     return sections;
@@ -131,6 +149,7 @@ class _FinanceTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     return Container(
       color: Colors.transparent,
       padding: EdgeInsets.only(
@@ -143,11 +162,16 @@ class _FinanceTopBar extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundColor: AppTheme.background,
+            backgroundColor: AppTheme.surface(context),
             child: CircleAvatar(
               radius: 19,
-              backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-              child: const Icon(Icons.person_rounded, color: AppTheme.primary),
+              backgroundColor: AppTheme.primary.withValues(
+                alpha: isDark ? 0.22 : 0.12,
+              ),
+              child: Icon(
+                Icons.person_rounded,
+                color: isDark ? const Color(0xFFB4B5FF) : AppTheme.primary,
+              ),
             ),
           ),
           const SizedBox(width: 18),
@@ -155,7 +179,7 @@ class _FinanceTopBar extends StatelessWidget {
             child: Text(
               'Finance',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppTheme.primary,
+                    color: AppTheme.primaryAccent(context),
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0,
                   ),
@@ -175,26 +199,21 @@ class _TotalBalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryText = AppTheme.primaryText(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(28, 28, 20, 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surface(context),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: AppTheme.softShadow(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'TOTAL BALANCE',
             style: TextStyle(
-              color: AppTheme.textPrimary,
+              color: primaryText,
               fontSize: 14,
               fontWeight: FontWeight.w800,
               letterSpacing: 3,
@@ -207,7 +226,7 @@ class _TotalBalanceCard extends StatelessWidget {
             child: Text(
               Helpers.currency(controller.totalBalance.value),
               style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: AppTheme.primary,
+                    color: AppTheme.primaryAccent(context),
                     fontSize: 38,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0,
@@ -250,7 +269,7 @@ class _EmptyFinanceActivities extends StatelessWidget {
         child: Text(
           'No transactions yet',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppTheme.textSecondary,
+                color: AppTheme.secondaryText(context),
                 fontWeight: FontWeight.w700,
               ),
         ),
@@ -274,11 +293,14 @@ class _MiniFinanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryText = AppTheme.primaryText(context);
     return Container(
       height: 120,
       padding: const EdgeInsets.fromLTRB(16, 16, 14, 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF0FC),
+        color: AppTheme.softFill(context).withValues(
+          alpha: AppTheme.isDark(context) ? 0.72 : 1,
+        ),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -288,8 +310,8 @@ class _MiniFinanceCard extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
+            style: TextStyle(
+              color: primaryText,
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
@@ -300,8 +322,8 @@ class _MiniFinanceCard extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Text(
               value,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
+              style: TextStyle(
+                color: primaryText,
                 fontSize: 26,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0,
@@ -325,104 +347,108 @@ class _MiniFinanceCard extends StatelessWidget {
 }
 
 class _ActivityTile extends StatelessWidget {
-  const _ActivityTile({required this.activity});
+  const _ActivityTile({
+    required this.activity,
+    required this.onLongPress,
+  });
 
   final FinanceActivity activity;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final amountColor =
-        activity.isIncome ? AppTheme.accent : AppTheme.textPrimary;
+        activity.isIncome ? AppTheme.accent : AppTheme.primaryText(context);
     final amountPrefix = activity.isIncome ? '+' : '-';
     final amount = Helpers.currency(activity.amount.abs());
+    final primaryText = AppTheme.primaryText(context);
+    final secondaryText = AppTheme.secondaryText(context);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Color(activity.backgroundColorValue),
-              shape: BoxShape.circle,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPress: onLongPress,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 18),
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+        decoration: BoxDecoration(
+          color: AppTheme.surface(context),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppTheme.softShadow(context),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Color(activity.backgroundColorValue),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                IconData(activity.iconCodePoint, fontFamily: 'MaterialIcons'),
+                color: Color(activity.iconColorValue),
+                size: 20,
+              ),
             ),
-            child: Icon(
-              IconData(activity.iconCodePoint, fontFamily: 'MaterialIcons'),
-              color: Color(activity.iconColorValue),
-              size: 20,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    activity.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: primaryText,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    activity.category,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: secondaryText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  activity.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                      ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$amountPrefix$amount',
+                    style: TextStyle(
+                      color: amountColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 7),
                 Text(
-                  activity.category,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
+                  activity.time,
+                  style: TextStyle(
+                    color: secondaryText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  '$amountPrefix$amount',
-                  style: TextStyle(
-                    color: amountColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                activity.time,
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

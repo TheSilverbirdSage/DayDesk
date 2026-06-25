@@ -19,9 +19,9 @@ class NotificationBell extends StatelessWidget {
           icon: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Icon(
+              Icon(
                 Icons.notifications_none_rounded,
-                color: AppTheme.primary,
+                color: AppTheme.primaryAccent(context),
                 size: 30,
               ),
               if (count > 0)
@@ -35,7 +35,10 @@ class NotificationBell extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppTheme.urgent,
                       borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(
+                        color: AppTheme.surface(context),
+                        width: 1.5,
+                      ),
                     ),
                     alignment: Alignment.center,
                     child: Text(
@@ -75,15 +78,16 @@ class _NotificationsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     return DraggableScrollableSheet(
       initialChildSize: 0.56,
       minChildSize: 0.36,
       maxChildSize: 0.82,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          decoration: BoxDecoration(
+            color: AppTheme.surface(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
           ),
           child: Column(
             children: [
@@ -92,7 +96,9 @@ class _NotificationsSheet extends StatelessWidget {
                 width: 56,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDCE5F6),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.16)
+                      : const Color(0xFFDCE5F6),
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
@@ -105,7 +111,7 @@ class _NotificationsSheet extends StatelessWidget {
                         'Notifications',
                         style:
                             Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: AppTheme.textPrimary,
+                                  color: AppTheme.primaryText(context),
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 0,
                                 ),
@@ -127,7 +133,7 @@ class _NotificationsSheet extends StatelessWidget {
                           'No notifications yet',
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: AppTheme.textSecondary,
+                                    color: AppTheme.secondaryText(context),
                                     fontWeight: FontWeight.w700,
                                   ),
                         ),
@@ -162,6 +168,8 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final primaryText = AppTheme.primaryText(context);
     final seen = notification['seen'] == true;
     final type = notification['type'] as String? ?? '';
     final isFinance = type == 'finance';
@@ -169,11 +177,13 @@ class _NotificationTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: seen ? const Color(0xFFF8F9FE) : const Color(0xFFEFF4FF),
+        color: isDark
+            ? (seen ? const Color(0xFF202B3D) : const Color(0xFF253454))
+            : (seen ? const Color(0xFFF8F9FE) : const Color(0xFFEFF4FF)),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: seen
-              ? Colors.black.withValues(alpha: 0.035)
+              ? AppTheme.divider(context)
               : AppTheme.primary.withValues(alpha: 0.18),
         ),
       ),
@@ -200,8 +210,8 @@ class _NotificationTile extends StatelessWidget {
               children: [
                 Text(
                   notification['title'] as String? ?? 'Notification',
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
+                  style: TextStyle(
+                    color: primaryText,
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
@@ -210,7 +220,7 @@ class _NotificationTile extends StatelessWidget {
                 Text(
                   notification['body'] as String? ?? '',
                   style: TextStyle(
-                    color: AppTheme.textPrimary.withValues(alpha: 0.72),
+                    color: primaryText.withValues(alpha: 0.72),
                     fontSize: 13,
                     height: 1.35,
                     fontWeight: FontWeight.w500,

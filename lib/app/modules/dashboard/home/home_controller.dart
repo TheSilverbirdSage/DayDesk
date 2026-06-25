@@ -13,6 +13,7 @@ class HomeController extends GetxController {
   final workProgress = 0.0.obs;
 
   final tasks = <TaskModel>[].obs;
+  final _workers = <Worker>[];
 
   LocalStorageService get _storage => Get.find<LocalStorageService>();
 
@@ -21,15 +22,27 @@ class HomeController extends GetxController {
     super.onInit();
     if (!Get.isRegistered<OnboardingService>()) return;
     final onboarding = Get.find<OnboardingService>();
-    if (onboarding.name.value.isNotEmpty) {
-      userName.value = onboarding.name.value;
-    }
-    dailyBudget.value = onboarding.dailyBudget.value;
-    savingsGoal.value = onboarding.savingsGoal.value;
-    ever<List<Map<String, dynamic>>>(_storage.tasks, (_) => _loadDashboard());
-    ever<List<Map<String, dynamic>>>(
-      _storage.financeActivities,
-      (_) => _loadDashboard(),
+    _syncOnboarding(onboarding);
+    _workers.addAll(
+      [
+        ever<String>(onboarding.name, (_) => _syncOnboarding(onboarding)),
+        ever<double>(
+          onboarding.dailyBudget,
+          (_) => _syncOnboarding(onboarding),
+        ),
+        ever<double>(
+          onboarding.savingsGoal,
+          (_) => _syncOnboarding(onboarding),
+        ),
+        ever<List<Map<String, dynamic>>>(
+          _storage.tasks,
+          (_) => _loadDashboard(),
+        ),
+        ever<List<Map<String, dynamic>>>(
+          _storage.financeActivities,
+          (_) => _loadDashboard(),
+        ),
+      ],
     );
     _loadDashboard();
   }
@@ -43,21 +56,43 @@ class HomeController extends GetxController {
     if (index == -1) return;
 
     final current = tasks[index];
-    current.isDone = !current.isDone;
-    current.subtitle = current.isDone
-        ? 'Done at 7:30 AM'
-        : current.subtitle.replaceFirst('Done at ', '');
-    tasks.refresh();
-
     final storedTask = _storage.tasks.firstWhereOrNull(
       (item) => item['id'] == current.id,
     );
     if (storedTask == null) return;
+
+    current.isDone = !current.isDone;
+    current.subtitle = current.isDone
+        ? 'Done at ${_formatCompletionTime(DateTime.now())}'
+        : (storedTask['time'] as String? ?? 'Today');
+    tasks.refresh();
+
+    final completedText = current.isDone ? current.subtitle : null;
     await _storage.updateTask({
       ...storedTask,
       'isDone': current.isDone,
-      'completedText': current.isDone ? current.subtitle : null,
+      'completedText': completedText,
     });
+  }
+
+  Future<void> deleteTask(TaskModel task) {
+    return _storage.deleteTask(task.id);
+  }
+
+  @override
+  void onClose() {
+    for (final worker in _workers) {
+      worker.dispose();
+    }
+    super.onClose();
+  }
+
+  void _syncOnboarding(OnboardingService onboarding) {
+    if (onboarding.name.value.isNotEmpty) {
+      userName.value = onboarding.name.value;
+    }
+    dailyBudget.value = onboarding.dailyBudget.value;
+    savingsGoal.value = onboarding.savingsGoal.value;
   }
 
   void _loadDashboard() {
@@ -81,6 +116,13 @@ class HomeController extends GetxController {
                   ? 'URGENT'
                   : (task['section'] as String? ?? '').toUpperCase(),
               isDone: task['isDone'] as bool? ?? false,
+              createdAt: task['createdAt'] != null
+                  ? DateTime.tryParse(task['createdAt'] as String)
+                  : null,
+              scheduledAt: task['scheduledAt'] != null
+                  ? DateTime.tryParse(task['scheduledAt'] as String)
+                  : null,
+              notes: task['notes'] as String?,
             ),
           ),
     );
@@ -95,5 +137,13 @@ class HomeController extends GetxController {
       final amount = (activity['amount'] as num?)?.toDouble() ?? 0;
       return amount < 0 ? sum + amount.abs() : sum;
     });
+  }
+
+  String _formatCompletionTime(DateTime completedAt) {
+    final hour = completedAt.hour;
+    final minute = completedAt.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+    return '$displayHour:$minute $period';
   }
 }

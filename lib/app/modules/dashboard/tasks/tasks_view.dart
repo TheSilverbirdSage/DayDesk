@@ -5,6 +5,8 @@ import 'package:test_app/app/modules/dashboard/widgets/dashboard_scaffold.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../routes/app_routes.dart';
 import '../widgets/notification_bell.dart';
+import '../widgets/swipe_delete_action.dart';
+import '../widgets/task_details_dialog.dart';
 import 'tasks_controller.dart';
 
 class TasksView extends GetView<TasksController> {
@@ -35,6 +37,18 @@ class TasksView extends GetView<TasksController> {
                           (section) => _TaskSectionBlock(
                             section: section,
                             onToggle: controller.toggleTask,
+                            onDelete: controller.deleteTask,
+                            onLongPress: (task) => showTaskDetailsDialog(
+                              context,
+                              TaskDetailsData(
+                                title: task.title,
+                                section: task.section,
+                                createdAt: task.createdAt,
+                                scheduledAt: task.scheduledAt,
+                                dueLabel: task.time,
+                                notes: task.notes,
+                              ),
+                            ),
                           ),
                         ),
                     ],
@@ -59,6 +73,7 @@ class _TasksTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     return Container(
       color: Colors.transparent,
       padding: EdgeInsets.only(
@@ -71,15 +86,20 @@ class _TasksTopBar extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-            child: const Icon(Icons.person_rounded, color: AppTheme.primary),
+            backgroundColor: AppTheme.primary.withValues(
+              alpha: isDark ? 0.22 : 0.12,
+            ),
+            child: Icon(
+              Icons.person_rounded,
+              color: isDark ? const Color(0xFFB4B5FF) : AppTheme.primary,
+            ),
           ),
           const SizedBox(width: 18),
           Expanded(
             child: Text(
               'Tasks',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppTheme.primary,
+                    color: AppTheme.primaryAccent(context),
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0,
                   ),
@@ -89,7 +109,7 @@ class _TasksTopBar extends StatelessWidget {
             onPressed: () {},
             icon: Icon(
               Icons.search_rounded,
-              color: Colors.blueGrey.shade300,
+              color: AppTheme.secondaryText(context).withValues(alpha: 0.72),
               size: 29,
             ),
           ),
@@ -108,32 +128,28 @@ class _SearchBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryText = AppTheme.primaryText(context);
+    final secondaryText = AppTheme.secondaryText(context);
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surface(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.035)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: AppTheme.divider(context)),
+        boxShadow: AppTheme.softShadow(context),
       ),
       child: TextField(
         controller: controller.searchController,
         onChanged: controller.updateSearch,
-        style: const TextStyle(
-          color: AppTheme.textPrimary,
+        style: TextStyle(
+          color: primaryText,
           fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
         decoration: InputDecoration(
           hintText: 'Search daily tasks...',
           hintStyle: TextStyle(
-            color: AppTheme.textSecondary.withValues(alpha: 0.52),
+            color: secondaryText.withValues(alpha: 0.52),
             fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
@@ -141,13 +157,13 @@ class _SearchBox extends StatelessWidget {
             padding: const EdgeInsets.only(left: 28, right: 18),
             child: Icon(
               Icons.search_rounded,
-              color: AppTheme.textPrimary.withValues(alpha: 0.62),
+              color: primaryText.withValues(alpha: 0.62),
               size: 34,
             ),
           ),
           prefixIconConstraints: const BoxConstraints(minWidth: 78),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: AppTheme.surface(context),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -173,6 +189,7 @@ class _CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     return SizedBox(
       height: 50,
       child: ListView.separated(
@@ -193,21 +210,18 @@ class _CategoryChips extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 70),
                   padding: const EdgeInsets.symmetric(horizontal: 26),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppTheme.primary : Colors.white,
+                    color: isSelected
+                        ? AppTheme.primary
+                        : AppTheme.surface(context),
                     borderRadius: BorderRadius.circular(38),
                     border: Border.all(
                       color: isSelected
                           ? AppTheme.primary
-                          : Colors.black.withValues(alpha: 0.055),
+                          : AppTheme.divider(context),
                     ),
-                    boxShadow: [
-                      if (!isSelected)
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.025),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                    ],
+                    boxShadow: isSelected || isDark
+                        ? []
+                        : AppTheme.softShadow(context),
                   ),
                   alignment: Alignment.center,
                   child: Text(
@@ -215,7 +229,7 @@ class _CategoryChips extends StatelessWidget {
                     style: TextStyle(
                       color: isSelected
                           ? Colors.white.withValues(alpha: 0.72)
-                          : AppTheme.textPrimary,
+                          : AppTheme.primaryText(context),
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
                     ),
@@ -234,10 +248,14 @@ class _TaskSectionBlock extends StatelessWidget {
   const _TaskSectionBlock({
     required this.section,
     required this.onToggle,
+    required this.onDelete,
+    required this.onLongPress,
   });
 
   final TaskSection section;
   final void Function(TaskListItem task) onToggle;
+  final void Function(TaskListItem task) onDelete;
+  final void Function(TaskListItem task) onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -252,7 +270,7 @@ class _TaskSectionBlock extends StatelessWidget {
                 child: Text(
                   section.title,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppTheme.textPrimary,
+                        color: AppTheme.primaryText(context),
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0,
@@ -275,6 +293,8 @@ class _TaskSectionBlock extends StatelessWidget {
             (task) => _TaskListTile(
               task: task,
               onToggle: () => onToggle(task),
+              onDelete: () => onDelete(task),
+              onLongPress: () => onLongPress(task),
             ),
           ),
         ],
@@ -287,146 +307,153 @@ class _TaskListTile extends StatelessWidget {
   const _TaskListTile({
     required this.task,
     required this.onToggle,
+    required this.onDelete,
+    required this.onLongPress,
   });
 
   final TaskListItem task;
   final VoidCallback onToggle;
+  final VoidCallback onDelete;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final muted = task.isDone;
     final accent = task.isUrgent ? const Color(0xFFC00000) : AppTheme.primary;
     final checkboxColor = muted ? const Color(0xFF8478D1) : accent;
+    final primaryText = AppTheme.primaryText(context);
+    final secondaryText = AppTheme.secondaryText(context);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      padding: const EdgeInsets.fromLTRB(18, 16, 14, 14),
-      decoration: BoxDecoration(
-        color: muted ? Colors.transparent : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: muted
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.025),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onToggle,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: muted ? checkboxColor : Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: muted
-                      ? checkboxColor
-                      : (task.isUrgent
-                          ? const Color(0xFFC00000)
-                          : Colors.black.withValues(alpha: 0.16)),
-                  width: 2.4,
+    return SwipeDeleteAction(
+      onDelete: onDelete,
+      bottomInset: 18,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: onLongPress,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 18),
+          padding: const EdgeInsets.fromLTRB(18, 16, 14, 14),
+          decoration: BoxDecoration(
+            color: muted ? Colors.transparent : AppTheme.surface(context),
+            borderRadius: BorderRadius.circular(16),
+            border: muted ? Border.all(color: AppTheme.divider(context)) : null,
+            boxShadow: muted ? [] : AppTheme.softShadow(context),
+          ),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: onToggle,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: muted ? checkboxColor : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: muted
+                          ? checkboxColor
+                          : (task.isUrgent
+                              ? const Color(0xFFC00000)
+                              : AppTheme.divider(context)),
+                      width: 2.4,
+                    ),
+                  ),
+                  child: muted
+                      ? const Icon(Icons.check_rounded,
+                          color: Colors.white, size: 14)
+                      : null,
                 ),
               ),
-              child: muted
-                  ? const Icon(Icons.check_rounded,
-                      color: Colors.white, size: 14)
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: muted
-                            ? AppTheme.textSecondary.withValues(alpha: 0.74)
-                            : AppTheme.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w400,
-                        decoration: muted
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Row(
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      task.icon,
-                      color: muted
-                          ? AppTheme.textSecondary.withValues(alpha: 0.56)
-                          : AppTheme.textSecondary,
-                      size: 16,
+                    Text(
+                      task.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: muted
+                                ? secondaryText.withValues(alpha: 0.74)
+                                : primaryText,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w400,
+                            decoration: muted
+                                ? TextDecoration.lineThrough
+                                : TextDecoration.none,
+                          ),
                     ),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        muted
-                            ? (task.completedText ??
-                                'Completed at ${task.time}')
-                            : task.time,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          task.icon,
                           color: muted
-                              ? AppTheme.textSecondary.withValues(alpha: 0.56)
-                              : AppTheme.textSecondary,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.3,
+                              ? secondaryText.withValues(alpha: 0.56)
+                              : secondaryText,
+                          size: 16,
                         ),
-                      ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            muted
+                                ? (task.completedText ??
+                                    'Completed at ${task.time}')
+                                : task.time,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: muted
+                                  ? secondaryText.withValues(alpha: 0.56)
+                                  : secondaryText,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                        if (!muted && task.priority != null) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              '•',
+                              style: TextStyle(
+                                color: secondaryText,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Flexible(
+                            child: Text(
+                              task.priority!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFC00000),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (!muted && task.priority != null) ...[
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          '•',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      Flexible(
-                        child: Text(
-                          task.priority!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFFC00000),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 14),
+              Icon(
+                Icons.drag_indicator_rounded,
+                color: secondaryText.withValues(alpha: 0.55),
+                size: 25,
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Icon(
-            Icons.drag_indicator_rounded,
-            color: Colors.blueGrey.shade200,
-            size: 25,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -443,7 +470,7 @@ class _EmptyTasks extends StatelessWidget {
         child: Text(
           'No tasks found',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppTheme.textSecondary,
+                color: AppTheme.secondaryText(context),
                 fontWeight: FontWeight.w700,
               ),
         ),
