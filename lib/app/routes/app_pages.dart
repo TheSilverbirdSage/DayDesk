@@ -15,6 +15,8 @@ import '../modules/dashboard/tasks/tasks_binding.dart';
 import '../modules/dashboard/tasks/tasks_view.dart';
 import '../modules/onboarding/onboarding_binding.dart';
 import '../modules/onboarding/onboarding_view.dart';
+import '../modules/settings/settings_binding.dart';
+import '../modules/settings/settings_view.dart';
 import '../modules/splash/splash_binding.dart';
 import '../modules/splash/splash_view.dart';
 import 'app_routes.dart';
@@ -53,6 +55,12 @@ class AppPages {
       page: () => const HomeView(),
       binding: HomeBinding(),
       transition: Transition.fadeIn,
+    ),
+    _page(
+      name: AppRoutes.settings,
+      page: () => const SettingsView(),
+      binding: SettingsBinding(),
+      transition: Transition.rightToLeftWithFade,
     ),
     _page(
       name: AppRoutes.tasks,

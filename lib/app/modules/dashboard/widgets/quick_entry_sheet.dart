@@ -13,6 +13,7 @@ class QuickEntryController extends GetxController {
   final entryType = 'Task'.obs;
   final category = 'Work'.obs;
   final dueDate = Rxn<DateTime>();
+  final selectedTime = Rxn<TimeOfDay>();
   final isUrgent = false.obs;
 
   final financeCategories = const [
@@ -30,10 +31,11 @@ class QuickEntryController extends GetxController {
         ? Get.find<OnboardingService>().categories
         : const <String>[];
     final values = <String>{
+      'Consistent',
       ...onboardingCategories.where((item) => item.trim().isNotEmpty),
       'Urgent',
     }.toList();
-    return values.isEmpty ? const ['Work', 'Urgent'] : values;
+    return values.isEmpty ? const ['Consistent', 'Work', 'Urgent'] : values;
   }
 
   void selectEntryType(String value) {
@@ -48,6 +50,12 @@ class QuickEntryController extends GetxController {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '$month/$day/${date.year}';
+  }
+
+  String get formattedSelectedTime {
+    final time = selectedTime.value;
+    if (time == null) return '--:--';
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> pickDueDate() async {
@@ -75,6 +83,18 @@ class QuickEntryController extends GetxController {
     }
   }
 
+  Future<void> pickTime() async {
+    final now = TimeOfDay.now();
+    final picked = await showTimePicker(
+      context: Get.context!,
+      initialTime: selectedTime.value ?? now,
+    );
+
+    if (picked != null) {
+      selectedTime.value = picked;
+    }
+  }
+
   Future<void> saveEntry() async {
     final title = titleController.text.trim();
     if (title.isEmpty) {
@@ -88,6 +108,19 @@ class QuickEntryController extends GetxController {
     }
 
     final isTaskUrgent = isUrgent.value || category.value == 'Urgent';
+    DateTime? scheduledDateTime;
+    if (dueDate.value != null && selectedTime.value != null) {
+      final date = dueDate.value!;
+      final time = selectedTime.value!;
+      scheduledDateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    }
+
     await Get.find<LocalStorageService>().addTask(
       title: title,
       section:
@@ -95,7 +128,13 @@ class QuickEntryController extends GetxController {
       time: dueDate.value == null ? 'Today' : formattedDueDate,
       iconCodePoint: Icons.event_rounded.codePoint,
       priority: isTaskUrgent ? 'High Priority' : null,
+      notes: notesController.text.trim().isEmpty
+          ? null
+          : notesController.text.trim(),
       isUrgent: isTaskUrgent,
+      isConsistent: category.value == 'Consistent',
+      dueDate: dueDate.value ?? DateTime.now(),
+      scheduledAt: scheduledDateTime,
     );
 
     Get.back<void>();
@@ -120,6 +159,9 @@ class QuickEntryController extends GetxController {
       iconCodePoint: style.iconCodePoint,
       iconColorValue: style.iconColorValue,
       backgroundColorValue: style.backgroundColorValue,
+      notes: notesController.text.trim().isEmpty
+          ? null
+          : notesController.text.trim(),
       occurredAt: dueDate.value,
     );
 
@@ -179,9 +221,9 @@ class QuickEntrySheet extends GetView<QuickEntryController> {
       maxChildSize: 0.94,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(42)),
+          decoration: BoxDecoration(
+            color: AppTheme.surface(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(42)),
           ),
           child: Column(
             children: [
@@ -190,7 +232,9 @@ class QuickEntrySheet extends GetView<QuickEntryController> {
                 width: 72,
                 height: 7,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDCE5F6),
+                  color: AppTheme.isDark(context)
+                      ? Colors.white.withValues(alpha: 0.16)
+                      : const Color(0xFFDCE5F6),
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
@@ -222,6 +266,10 @@ class QuickEntrySheet extends GetView<QuickEntryController> {
                     const _FieldLabel('DUE DATE'),
                     const SizedBox(height: 18),
                     _DueDateField(controller: controller),
+                    const SizedBox(height: 18),
+                    const _FieldLabel('TIME'),
+                    const SizedBox(height: 18),
+                    _TimeField(controller: controller),
                     const SizedBox(height: 34),
                     _AmountBox(controller: controller),
                     const SizedBox(height: 34),
@@ -270,7 +318,7 @@ class _SheetHeader extends StatelessWidget {
           onPressed: () => Get.back<void>(),
           style: TextButton.styleFrom(
             padding: EdgeInsets.zero,
-            foregroundColor: AppTheme.primary,
+            foregroundColor: AppTheme.primaryAccent(context),
           ),
           child: const Text(
             'Cancel',
@@ -282,7 +330,7 @@ class _SheetHeader extends StatelessWidget {
             'New Entry',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppTheme.textPrimary,
+                  color: AppTheme.primaryText(context),
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
                 ),
@@ -306,7 +354,7 @@ class _EntryTypeSelector extends StatelessWidget {
         height: 65,
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: const Color(0xFFE3ECFC),
+          color: AppTheme.softFill(context),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
@@ -356,7 +404,7 @@ class _TypeButton extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
+          color: selected ? AppTheme.surface(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -364,14 +412,18 @@ class _TypeButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: selected ? AppTheme.primary : AppTheme.textSecondary,
+              color: selected
+                  ? AppTheme.primaryAccent(context)
+                  : AppTheme.secondaryText(context),
               size: 20,
             ),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
-                color: selected ? AppTheme.primary : AppTheme.textSecondary,
+                color: selected
+                    ? AppTheme.primaryAccent(context)
+                    : AppTheme.secondaryText(context),
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.0,
@@ -393,8 +445,8 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
-        color: AppTheme.textSecondary,
+      style: TextStyle(
+        color: AppTheme.secondaryText(context),
         fontSize: 13,
         fontWeight: FontWeight.w900,
         letterSpacing: 1.0,
@@ -422,20 +474,20 @@ class _SoftTextField extends StatelessWidget {
       controller: controller,
       minLines: minLines,
       maxLines: maxLines,
-      style: const TextStyle(
-        color: AppTheme.textPrimary,
+      style: TextStyle(
+        color: AppTheme.primaryText(context),
         fontSize: 15,
         fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(
-          color: AppTheme.textSecondary.withValues(alpha: 0.40),
+          color: AppTheme.secondaryText(context).withValues(alpha: 0.40),
           fontSize: 15,
           fontWeight: FontWeight.w500,
         ),
         filled: true,
-        fillColor: const Color(0xFFEFF4FF),
+        fillColor: AppTheme.softFill(context).withValues(alpha: 0.72),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         border: OutlineInputBorder(
@@ -486,14 +538,14 @@ class _CategoryField extends StatelessWidget {
             }
           },
           icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 34),
-          style: const TextStyle(
-            color: AppTheme.textPrimary,
+          style: TextStyle(
+            color: AppTheme.primaryText(context),
             fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFEFF4FF),
+            fillColor: AppTheme.softFill(context).withValues(alpha: 0.72),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             border: OutlineInputBorder(
@@ -530,7 +582,7 @@ class _DueDateField extends StatelessWidget {
           height: 62,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
-            color: const Color(0xFFEFF4FF),
+            color: AppTheme.softFill(context).withValues(alpha: 0.72),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
@@ -539,17 +591,15 @@ class _DueDateField extends StatelessWidget {
                 child: Text(
                   controller.formattedDueDate,
                   style: TextStyle(
-                    color: controller.dueDate.value == null
-                        ? AppTheme.textPrimary
-                        : AppTheme.textPrimary,
+                    color: AppTheme.primaryText(context),
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.calendar_month_outlined,
-                color: AppTheme.textSecondary,
+                color: AppTheme.secondaryText(context),
                 size: 27,
               ),
             ],
@@ -570,9 +620,14 @@ class _AmountBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFFFF8),
+        color: AppTheme.isDark(context)
+            ? AppTheme.accent.withValues(alpha: 0.12)
+            : const Color(0xFFEFFFF8),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFB9F3D9), width: 1.2),
+        border: Border.all(
+          color: AppTheme.accent.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
       ),
       child: Column(
         children: [
@@ -606,7 +661,7 @@ class _AmountBox extends StatelessWidget {
             controller: controller.amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: TextStyle(
-              color: AppTheme.textPrimary.withValues(alpha: 0.72),
+              color: AppTheme.primaryText(context).withValues(alpha: 0.72),
               fontSize: 36,
               fontWeight: FontWeight.w800,
               letterSpacing: 0,
@@ -614,13 +669,13 @@ class _AmountBox extends StatelessWidget {
             decoration: InputDecoration(
               prefixText: r'$ ',
               prefixStyle: TextStyle(
-                color: AppTheme.textSecondary.withValues(alpha: 0.35),
+                color: AppTheme.secondaryText(context).withValues(alpha: 0.35),
                 fontSize: 36,
                 fontWeight: FontWeight.w800,
               ),
               hintText: '0.00',
               hintStyle: TextStyle(
-                color: AppTheme.textSecondary.withValues(alpha: 0.20),
+                color: AppTheme.secondaryText(context).withValues(alpha: 0.20),
                 fontSize: 36,
                 fontWeight: FontWeight.w800,
               ),
@@ -652,9 +707,9 @@ class _SaveFooter extends StatelessWidget {
         MediaQuery.of(context).padding.bottom + 5,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surface(context),
         border: Border(
-          top: BorderSide(color: AppTheme.background.withValues(alpha: 0.8)),
+          top: BorderSide(color: AppTheme.divider(context)),
         ),
       ),
       child: Column(
@@ -679,14 +734,17 @@ class _SaveFooter extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.lock_outline_rounded,
-                  color: AppTheme.textSecondary, size: 17),
-              SizedBox(width: 10),
+            children: [
+              Icon(
+                Icons.lock_outline_rounded,
+                color: AppTheme.secondaryText(context),
+                size: 17,
+              ),
+              const SizedBox(width: 10),
               Text(
                 'END-TO-END ENCRYPTED',
                 style: TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.secondaryText(context),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -695,6 +753,49 @@ class _SaveFooter extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TimeField extends StatelessWidget {
+  const _TimeField({required this.controller});
+
+  final QuickEntryController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(
+      () => InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: controller.pickTime,
+        child: Container(
+          height: 62,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: AppTheme.softFill(context).withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  controller.formattedSelectedTime,
+                  style: TextStyle(
+                    color: AppTheme.primaryText(context),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.access_time_rounded,
+                color: AppTheme.secondaryText(context),
+                size: 27,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

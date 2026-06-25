@@ -13,6 +13,9 @@ class FinanceActivity {
     required this.iconCodePoint,
     required this.iconColorValue,
     required this.backgroundColorValue,
+    this.createdAt,
+    this.occurredAt,
+    this.notes,
   });
 
   final String title;
@@ -23,6 +26,9 @@ class FinanceActivity {
   final int iconCodePoint;
   final int iconColorValue;
   final int backgroundColorValue;
+  final DateTime? createdAt;
+  final DateTime? occurredAt;
+  final String? notes;
 
   bool get isIncome => amount > 0;
 
@@ -36,6 +42,13 @@ class FinanceActivity {
       iconCodePoint: map['iconCodePoint'] as int? ?? 0xe227,
       iconColorValue: map['iconColorValue'] as int? ?? 0xFF2D2B8F,
       backgroundColorValue: map['backgroundColorValue'] as int? ?? 0xFFEDEBFA,
+      createdAt: map['createdAt'] != null
+          ? DateTime.tryParse(map['createdAt'] as String)
+          : null,
+      occurredAt: map['occurredAt'] != null
+          ? DateTime.tryParse(map['occurredAt'] as String)
+          : null,
+      notes: map['notes'] as String?,
     );
   }
 }

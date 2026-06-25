@@ -48,7 +48,7 @@ class ChartsView extends GetView<ChartsController> {
                               .textTheme
                               .headlineSmall
                               ?.copyWith(
-                                color: AppTheme.textPrimary,
+                                color: AppTheme.primaryText(context),
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0,
                               ),
@@ -60,8 +60,8 @@ class ChartsView extends GetView<ChartsController> {
                           controller.showAllCategories.value
                               ? 'Show less'
                               : 'View all',
-                          style: const TextStyle(
-                            color: AppTheme.primary,
+                          style: TextStyle(
+                            color: AppTheme.primaryAccent(context),
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
                           ),
@@ -88,6 +88,7 @@ class _InsightsTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     return Container(
       color: Colors.transparent,
       padding: EdgeInsets.only(
@@ -100,11 +101,16 @@ class _InsightsTopBar extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundColor: AppTheme.background,
+            backgroundColor: AppTheme.surface(context),
             child: CircleAvatar(
               radius: 19,
-              backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-              child: const Icon(Icons.person_rounded, color: AppTheme.primary),
+              backgroundColor: AppTheme.primary.withValues(
+                alpha: isDark ? 0.22 : 0.12,
+              ),
+              child: Icon(
+                Icons.person_rounded,
+                color: isDark ? const Color(0xFFB4B5FF) : AppTheme.primary,
+              ),
             ),
           ),
           const SizedBox(width: 18),
@@ -112,7 +118,7 @@ class _InsightsTopBar extends StatelessWidget {
             child: Text(
               'Insights',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppTheme.primary,
+                    color: AppTheme.primaryAccent(context),
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0,
                   ),
@@ -144,7 +150,7 @@ class _MostExpensiveCard extends StatelessWidget {
             child: Text(
               controller.mostExpensiveCategory.value,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.primary,
+                    color: AppTheme.primaryAccent(context),
                     fontSize: 25,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0,
@@ -230,15 +236,9 @@ class _InsightSummaryCard extends StatelessWidget {
       height: 170,
       padding: const EdgeInsets.fromLTRB(16, 24, 14, 28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surface(context),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: AppTheme.softShadow(context),
       ),
       child: child,
     );
@@ -267,7 +267,7 @@ class _WeeklySpendingCard extends StatelessWidget {
                       'Weekly Spending',
                       style:
                           Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: AppTheme.textPrimary,
+                                color: AppTheme.primaryText(context),
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0,
                               ),
@@ -276,7 +276,7 @@ class _WeeklySpendingCard extends StatelessWidget {
                     Text(
                       controller.weekRange.value,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppTheme.textSecondary,
+                            color: AppTheme.secondaryText(context),
                             fontWeight: FontWeight.w500,
                             letterSpacing: 0,
                           ),
@@ -290,7 +290,7 @@ class _WeeklySpendingCard extends StatelessWidget {
                   Text(
                     Helpers.currency(controller.weeklySpending.value),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: AppTheme.primary,
+                          color: AppTheme.primaryAccent(context),
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0,
                         ),
@@ -345,7 +345,7 @@ class _SpendingBar extends StatelessWidget {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD5DFF1),
+                  color: AppTheme.softFill(context),
                   borderRadius: BorderRadius.circular(9),
                 ),
               ),
@@ -366,8 +366,8 @@ class _SpendingBar extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           bar.day,
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
+          style: TextStyle(
+            color: AppTheme.secondaryText(context),
             fontSize: 10,
             fontWeight: FontWeight.w800,
           ),
@@ -392,7 +392,7 @@ class _TaskCompletionCard extends StatelessWidget {
           Text(
             'Task Completion',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppTheme.textPrimary,
+                  color: AppTheme.primaryText(context),
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
                 ),
@@ -412,18 +412,18 @@ class _TaskCompletionCard extends StatelessWidget {
                       children: [
                         Text(
                           '${controller.totalTasksDone.value}',
-                          style: const TextStyle(
-                            color: AppTheme.textPrimary,
+                          style: TextStyle(
+                            color: AppTheme.primaryText(context),
                             fontSize: 28,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 0,
                           ),
                         ),
                         const SizedBox(height: 1),
-                        const Text(
+                        Text(
                           'DONE',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: AppTheme.secondaryText(context),
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
                           ),
@@ -471,7 +471,9 @@ class _CompletionLegend extends StatelessWidget {
             child: Text(
               metric.label,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary.withValues(alpha: 0.82),
+                    color: AppTheme.primaryText(context).withValues(
+                      alpha: 0.82,
+                    ),
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0,
                   ),
@@ -479,8 +481,8 @@ class _CompletionLegend extends StatelessWidget {
           ),
           Text(
             '${metric.count}',
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
+            style: TextStyle(
+              color: AppTheme.primaryText(context),
               fontSize: 14,
               fontWeight: FontWeight.w900,
             ),
@@ -503,15 +505,9 @@ class _CategoryTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.fromLTRB(24, 22, 26, 22),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surface(context),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        boxShadow: AppTheme.softShadow(context),
       ),
       child: Row(
         children: [
@@ -534,7 +530,7 @@ class _CategoryTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.textPrimary,
+                        color: AppTheme.primaryText(context),
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0,
                       ),
@@ -543,7 +539,7 @@ class _CategoryTile extends StatelessWidget {
                 Text(
                   '${category.transactions} transactions',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.secondaryText(context),
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0,
                       ),
@@ -558,7 +554,7 @@ class _CategoryTile extends StatelessWidget {
               Text(
                 Helpers.currency(category.amount),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.textPrimary,
+                      color: AppTheme.primaryText(context),
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0,
                     ),
@@ -594,15 +590,9 @@ class _ChartCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surface(context),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: AppTheme.softShadow(context),
       ),
       child: child,
     );
@@ -620,8 +610,8 @@ class _CapsLabel extends StatelessWidget {
       text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: AppTheme.textSecondary,
+      style: TextStyle(
+        color: AppTheme.secondaryText(context),
         fontSize: 11,
         fontWeight: FontWeight.w900,
         letterSpacing: 0.5,

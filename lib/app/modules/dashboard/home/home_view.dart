@@ -7,6 +7,7 @@ import '../../../routes/app_routes.dart';
 import '../widgets/dashboard_scaffold.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/task_card.dart';
+import '../widgets/task_details_dialog.dart';
 import 'home_controller.dart';
 
 class HomeView extends GetView<HomeController> {
@@ -14,6 +15,7 @@ class HomeView extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     return DashboardScaffold(
       activeRoute: AppRoutes.home,
       child: SafeArea(
@@ -37,45 +39,17 @@ class HomeView extends GetView<HomeController> {
                     ? "You're all clear on tasks for now."
                     : "You have ${controller.todayTaskCount.value} tasks to complete and ${controller.remaining >= 0 ? "you're under budget" : "you're over budget"}.",
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.textPrimary.withValues(alpha: 0.86),
+                      color: AppTheme.primaryText(context).withValues(
+                        alpha: 0.86,
+                      ),
                       height: 1.45,
                       fontWeight: FontWeight.w500,
                     ),
               ),
               const SizedBox(height: 24),
-              _DailyBudgetCard(controller: controller),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Priority Tasks',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => Get.toNamed(AppRoutes.tasks),
-                    child: const Text(
-                      'View All',
-                      style: TextStyle(
-                        color: AppTheme.primary,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ...controller.tasks.map(
-                (task) => TaskCard(
-                  task: task,
-                  onToggle: () => controller.toggleTask(task),
-                ),
-              ),
+              _DailyBudgetCard(
+                  spent: controller.spent.value,
+                  dailyBudget: controller.dailyBudget.value),
               const SizedBox(height: 36),
               Row(
                 children: [
@@ -93,16 +67,63 @@ class HomeView extends GetView<HomeController> {
                   const SizedBox(width: 18),
                   Expanded(
                     child: _StatCard(
-                      backgroundColor: AppTheme.statBlue,
+                      backgroundColor: isDark
+                          ? AppTheme.elevatedSurface(context)
+                          : AppTheme.statBlue,
                       icon: Icons.stacked_bar_chart_rounded,
-                      iconColor: AppTheme.primary,
+                      iconColor:
+                          isDark ? const Color(0xFFB4B5FF) : AppTheme.primary,
                       label: 'Work Progress',
                       value:
                           '${(controller.workProgress.value * 100).round()}%',
-                      textColor: AppTheme.textPrimary,
+                      textColor: AppTheme.primaryText(context),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Priority Tasks',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Get.toNamed(AppRoutes.tasks),
+                    child: Text(
+                      'View All',
+                      style: TextStyle(
+                        color: AppTheme.primaryAccent(context),
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...controller.tasks.map(
+                (task) => TaskCard(
+                  task: task,
+                  onToggle: () => controller.toggleTask(task),
+                  onDelete: () => controller.deleteTask(task),
+                  onLongPress: () => showTaskDetailsDialog(
+                    context,
+                    TaskDetailsData(
+                      title: task.title,
+                      section: task.badge,
+                      createdAt: task.createdAt,
+                      scheduledAt: task.scheduledAt,
+                      dueLabel: task.subtitle,
+                      notes: task.notes,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 36),
             ],
@@ -118,15 +139,28 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     return Row(
       children: [
-        CircleAvatar(
-          radius: 28,
-          backgroundColor: Colors.white,
-          child: CircleAvatar(
-            radius: 24,
-            backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-            child: const Icon(Icons.person_rounded, color: AppTheme.primary),
+        Material(
+          color: AppTheme.surface(context),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => Get.toNamed(AppRoutes.settings),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: CircleAvatar(
+                radius: 24,
+                backgroundColor: AppTheme.primary.withValues(
+                  alpha: isDark ? 0.22 : 0.12,
+                ),
+                child: Icon(
+                  Icons.person_rounded,
+                  color: isDark ? const Color(0xFFB4B5FF) : AppTheme.primary,
+                ),
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 18),
@@ -135,19 +169,19 @@ class _TopBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Good Morning,',
+                'Good Morning',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: AppTheme.secondaryText(context),
                       fontWeight: FontWeight.w500,
                     ),
               ),
-              Text(
-                'Overview',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
+              // Text(
+              //   'Overview',
+              //   style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              //         color: AppTheme.primaryAccent(context),
+              //         fontWeight: FontWeight.w900,
+              //       ),
+              // ),
             ],
           ),
         ),
@@ -158,25 +192,23 @@ class _TopBar extends StatelessWidget {
 }
 
 class _DailyBudgetCard extends StatelessWidget {
-  const _DailyBudgetCard({required this.controller});
+  const _DailyBudgetCard({required this.spent, required this.dailyBudget});
 
-  final HomeController controller;
+  final double spent;
+  final double dailyBudget;
 
   @override
   Widget build(BuildContext context) {
-    final progress = controller.progress.clamp(0.0, 1.0);
+    final progress =
+        dailyBudget == 0 ? 0.0 : (spent / dailyBudget).clamp(0.0, 1.0);
+    final remaining = dailyBudget - spent;
+    final primaryText = AppTheme.primaryText(context);
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: AppTheme.cardBackground,
+        color: AppTheme.surface(context),
         borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.035),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: AppTheme.softShadow(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +235,7 @@ class _DailyBudgetCard extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       child: Text.rich(
                         TextSpan(
-                          text: Helpers.currency(controller.spent.value),
+                          text: Helpers.currency(spent),
                           style: Theme.of(context)
                               .textTheme
                               .displaySmall
@@ -213,13 +245,12 @@ class _DailyBudgetCard extends StatelessWidget {
                               ),
                           children: [
                             TextSpan(
-                              text:
-                                  ' / ${Helpers.currency(controller.dailyBudget.value)}',
+                              text: ' / ${Helpers.currency(dailyBudget)}',
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium
                                   ?.copyWith(
-                                    color: AppTheme.textPrimary,
+                                    color: primaryText,
                                     fontWeight: FontWeight.w500,
                                   ),
                             ),
@@ -248,7 +279,7 @@ class _DailyBudgetCard extends StatelessWidget {
               Text(
                 'Spent',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.textPrimary.withValues(alpha: 0.86),
+                      color: primaryText.withValues(alpha: 0.86),
                       fontWeight: FontWeight.w500,
                     ),
               ),
@@ -269,21 +300,21 @@ class _DailyBudgetCard extends StatelessWidget {
               value: progress,
               minHeight: 8,
               color: AppTheme.accent,
-              backgroundColor: AppTheme.background,
+              backgroundColor: AppTheme.softFill(context),
             ),
           ),
           const SizedBox(height: 10),
           Text.rich(
             TextSpan(
               text: 'Remaining: ',
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
+              style: TextStyle(
+                color: primaryText,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
               children: [
                 TextSpan(
-                  text: Helpers.currency(controller.remaining),
+                  text: Helpers.currency(remaining),
                   style: const TextStyle(
                       color: AppTheme.accent, fontWeight: FontWeight.w900),
                 ),
